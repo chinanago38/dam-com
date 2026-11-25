@@ -71,8 +71,20 @@ def load_photos():
         for f in sorted(glob.glob(os.path.join(d, "*.tsv"))):
             for line in open(f, encoding="utf-8").read().splitlines()[1:]:
                 c = line.split("\t")
-                if len(c) >= 7 and c[1].startswith("https://upload.wikimedia.org/"):
-                    photos[c[0].strip()] = c
+                if len(c) < 7 or not re.match(r"https://(upload|thumb)\.wikimedia\.org/", c[1]):
+                    continue
+                c[1] = c[1].split("?")[0]
+                a = c[3]
+                a = re.sub(r"^No machine-readable author provided\.\s*(.+?) assumed.*$", r"\1", a)
+                a = re.sub(r"^photo:\s*", "", a)
+                a = re.sub(r"\s*\(talk\).*$", "", a)
+                a = re.sub(r",?\s*(Taken with|with) .*$", "", a).strip()
+                if not a or a == "不明":
+                    if "public domain" not in c[4].lower() and "cc0" not in c[4].lower():
+                        continue  # 表示が必要なライセンスで作者がわからない写真は使わない
+                    a = "作者不明"
+                c[3] = a
+                photos[c[0].strip()] = c
     return photos
 
 

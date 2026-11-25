@@ -324,6 +324,19 @@ def main():
     type_top = "".join(f'<li><strong>{TYPE_NAME[t]}</strong>でいちばん高いのは{dam_link(by_type[t][0])}（{esc(by_type[t][0]["height"])}・{esc(by_type[t][0]["location"])}）</li>' for t in ["arch","gravity","rockfill"])
     hokkaido = [x for x in rows if "北海道" in x["prefs"]]
     kyushu = [x for x in rows if set(x["prefs"]) & {"福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県"}]
+    known_slugs = {r["slug"] for r in rows}
+    others = []
+    for d in sorted(os.listdir(os.path.join(ROOT, "dam"))):
+        fp = os.path.join(ROOT, "dam", d, "index.html")
+        if d not in known_slugs and os.path.exists(fp):
+            h1 = re.search(r"<h1>(.*?)</h1>", open(fp, encoding="utf-8").read(), re.S)
+            name = re.sub(r"<[^>]+>", "", h1.group(1)) if h1 else d
+            name = re.sub(r"(の見学ガイド|の観光放流.*|・.*)$", "", name)
+            others.append(f'<li><a href="/dam/{d}/">{esc(name)}</a></li>')
+    others_html = f"""  <h2>そのほかの人気のダム</h2>
+  <p>高さの上位50には入らないものの、観光放流や歴史のある姿で人気のダムです。</p>
+  <ul>{"".join(others)}</ul>
+""" if others else ""
     extra = f"""  <h2>堤高とは？</h2>
   <p>ダムの大きさを表す数字はいくつかありますが、いちばんよく使われるのが<strong>堤高（ていこう）</strong>です。堤高は、ダムの基礎になっている岩盤から、ダムのいちばん上（天端）までの高さのことです。地面から見える部分だけでなく、地中に埋まっている基礎の部分も含むため、実際に下から見上げたときの高さより大きな数字になることがあります。</p>
   <p>法律や国の基準では、堤高が15m以上のものを「ダム」と呼びます。日本には、この基準を満たすダムが数千あります。ランキングの50位でも堤高は100mを超えていて、上位のダムがいかに大きいかがわかります。</p>
@@ -361,7 +374,7 @@ def main():
     <li><a href="/dam/miyagase/">宮ヶ瀬ダム</a>（7位）：都心から車で約1時間。4月〜11月は定期の観光放流があり、資料館やインクラインもあります</li>
   </ul>
   <p>そのほかのダムも、見学情報を調べたものから順にページを追加していきます。</p>
-"""
+{others_html}"""
     body = f"""  <h1>日本のダム 高さ（堤高）ランキング TOP50</h1>
   <p class="updated">最終確認日：{DATE_JA}</p>
   <p>日本のダムを、堤高（基礎の岩盤からダムのいちばん上までの高さ）の順に並べました。1位は富山県の黒部ダムで、高さは186mです。詳しいページがあるダムは、ダム名から開けます。ページは、ダムごとの見学情報を調べたものから順に追加しています。</p>

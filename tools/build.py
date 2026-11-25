@@ -40,7 +40,7 @@ def page(title, desc, canonical, body, crumbs):
 <body>
 <header class="site"><div class="wrap">
   <a class="logo" href="/">ダム<span>.com</span></a>
-  <nav class="global"><a href="/ranking/">ランキング</a><a href="/pref/">都道府県</a><a href="/dam-card/">ダムカード</a></nav>
+  <nav class="global"><a href="/ranking/">ランキング</a><a href="/keishiki/">ダムの形式</a><a href="/dam-card/">ダムカード</a></nav>
 </div></header>
 
 <main><div class="wrap">
@@ -50,7 +50,7 @@ def page(title, desc, canonical, body, crumbs):
 
 <footer class="site"><div class="wrap">
   <p>ダム.com は、ダムを巡る人のための個人運営の情報サイトです。国や電力会社など、ダムを管理する団体の公式サイトではありません。</p>
-  <p><a href="/">トップ</a> ・ <a href="/ranking/">堤高ランキング</a> ・ <a href="/pref/">都道府県から探す</a> ・ <a href="/keishiki/">ダムの形式</a> ・ <a href="/dam-card/">ダムカード</a></p>
+  <p><a href="/">トップ</a> ・ <a href="/ranking/">堤高ランキング</a> ・ <a href="/keishiki/">ダムの形式</a> ・ <a href="/dam-card/">ダムカード</a></p>
   <p>© 2026 ダム.com</p>
 </div></footer>
 </body>
@@ -75,6 +75,14 @@ SOURCE_HTML = f"""  <section class="sources">
     <p class="updated">最終確認日：{DATE_JA}</p>
   </section>"""
 
+DETAILED = set()
+_dp = os.path.join(ROOT, "tools", "detailed.txt")
+if os.path.exists(_dp):
+    DETAILED = {l.strip() for l in open(_dp, encoding="utf-8") if l.strip() and not l.startswith("#")}
+
+def dam_link(r):
+    return f'<a href="{r["url"]}">{esc(r["name"])}</a>' if r["has_page"] else esc(r["name"])
+
 def main():
     rows = []
     with open(os.path.join(ROOT, "tools", "dams.tsv"), encoding="utf-8") as f:
@@ -83,6 +91,7 @@ def main():
             r["tslug"] = TYPE_SLUG[r["type"]]
             r["prefs"] = prefs_of(r["location"])
             r["url"] = "/kurobe/" if r["slug"] == "kurobe" else f"/dam/{r['slug']}/"
+            r["has_page"] = r["slug"] == "kurobe" or r["slug"] in DETAILED
             rows.append(r)
     by_pref = defaultdict(list)
     by_river = defaultdict(list)
@@ -96,7 +105,7 @@ def main():
     count = 0
     # 個別ページ
     for r in rows:
-        if r["slug"] == "kurobe":
+        if not r["has_page"] or r["slug"] == "kurobe":
             continue
         name = r["name"]
         lake = f"（ダム湖：{r['lake']}）" if r["lake"] else ""
@@ -148,10 +157,10 @@ def main():
         count += 1
 
     # ランキング
-    trs = "".join(f'<tr><td>{r["rank"]}</td><td><a href="{r["url"]}">{esc(r["name"])}</a></td><td>{esc(r["height"])}</td><td><a href="/keishiki/{r["tslug"]}/">{esc(TYPE_NAME[r["tslug"]].replace("コンクリートダム","").replace("ダム",""))}</a></td><td>{esc(r["location"])}</td></tr>' for r in rows)
+    trs = "".join(f'<tr><td>{r["rank"]}</td><td>{dam_link(r)}</td><td>{esc(r["height"])}</td><td><a href="/keishiki/{r["tslug"]}/">{esc(TYPE_NAME[r["tslug"]].replace("コンクリートダム","").replace("ダム",""))}</a></td><td>{esc(r["location"])}</td></tr>' for r in rows)
     body = f"""  <h1>日本のダム 高さ（堤高）ランキング TOP50</h1>
   <p class="updated">最終確認日：{DATE_JA}</p>
-  <p>日本のダムを、堤高（基礎の岩盤からダムのいちばん上までの高さ）の順に並べました。1位は富山県の黒部ダムで、高さは186mです。ダム名を押すと、それぞれのダムの詳しいページを見られます。</p>
+  <p>日本のダムを、堤高（基礎の岩盤からダムのいちばん上までの高さ）の順に並べました。1位は富山県の黒部ダムで、高さは186mです。詳しいページがあるダムは、ダム名から開けます。ページは、ダムごとの見学情報を調べたものから順に追加しています。</p>
   <table>
     <thead><tr><th>順位</th><th>ダム名</th><th>堤高</th><th>形式</th><th>所在地</th></tr></thead>
     <tbody>{trs}</tbody>
@@ -169,7 +178,7 @@ def main():
     cards = ""
     for ts in ["arch", "gravity", "rockfill"]:
         lst = by_type[ts]
-        items = "".join(f'<li><a href="{x["url"]}">{esc(x["name"])}</a>（{esc(x["height"])}・{esc(x["location"])}）</li>' for x in lst)
+        items = "".join(f'<li>{dam_link(x)}（{esc(x["height"])}・{esc(x["location"])}）</li>' for x in lst)
         body = f"""  <h1>{TYPE_NAME[ts]}とは｜特徴と代表的なダム</h1>
   <p class="updated">最終確認日：{DATE_JA}</p>
   <p>{TYPE_DESC[ts]}</p>
@@ -196,23 +205,8 @@ def main():
     write("/keishiki/", page("ダムの形式の見分け方｜アーチ式・重力式・ロックフィル｜ダム.com", "ダムの主な形式（アーチ式、重力式、ロックフィル）の違いと見分け方を、日本の高いダムの例とあわせて紹介します。", "/keishiki/", body, [("ダム.com", "/"), ("ダムの形式", None)]))
     count += 1
 
-    # 都道府県一覧
-    secs = ""
-    for p in PREF_ORDER:
-        if p not in by_pref:
-            continue
-        items = "".join(f'<li><a href="{x["url"]}">{esc(x["name"])}</a>（堤高{esc(x["height"])}・全国{x["rank"]}位）</li>' for x in by_pref[p])
-        secs += f'  <h2 id="{esc(p)}">{esc(p)}</h2>\n  <ul>{items}</ul>\n'
-    body = f"""  <h1>都道府県から探す</h1>
-  <p class="updated">最終確認日：{DATE_JA}</p>
-  <p>このサイトで紹介しているダムを、都道府県ごとにまとめました。2つの県にまたがるダムは、両方に載せています。</p>
-{secs}
-{SOURCE_HTML}"""
-    write("/pref/", page("都道府県から探す｜全国の高いダム一覧｜ダム.com", "日本の高いダムを都道府県ごとにまとめました。各ダムの高さ・形式・見学前の注意点のページにリンクしています。", "/pref/", body, [("ダム.com", "/"), ("都道府県から探す", None)]))
-    count += 1
-
     # sitemap
-    urls = ["/", "/dam-card/", "/kurobe/", "/ranking/", "/keishiki/", "/pref/"] + [f"/keishiki/{t}/" for t in ["arch","gravity","rockfill"]] + [r["url"] for r in rows if r["slug"] != "kurobe"]
+    urls = ["/", "/dam-card/", "/kurobe/", "/ranking/", "/keishiki/"] + [f"/keishiki/{t}/" for t in ["arch","gravity","rockfill"]] + [r["url"] for r in rows if r["has_page"] and r["slug"] != "kurobe"]
     sm = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + "".join(f"<url><loc>https://xn--6ck4c.com{u}</loc><lastmod>{DATE}</lastmod></url>\n" for u in urls) + "</urlset>\n"
     with open(os.path.join(ROOT, "sitemap.xml"), "w", encoding="utf-8") as f:
         f.write(sm)

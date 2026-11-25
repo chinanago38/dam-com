@@ -3,3 +3,4 @@ miyagase
 yamba
 ogouchi
 okutadami
+sakuma

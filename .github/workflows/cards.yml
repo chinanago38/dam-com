@@ -1,0 +1,21 @@
+name: Fetch dam card images
+# fetch_cards.py が変わったら、Wikimedia Commons から自由ライセンスのダムカード画像の情報を集めて cards.tsv をコミットする
+on:
+  push:
+    branches: [main]
+    paths: ["tools/fetch_cards.py"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/fetch_cards.py
+      - name: Commit results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tools/photos/cards.tsv
+          git diff --cached --quiet || (git commit -m "Update Commons dam card list" && git pull --rebase origin main && git push)

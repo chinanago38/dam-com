@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fetch_photos import api, strip, ok_license, ROOT
 
 CATS = ["Category:Dam cards", "Category:Dam cards of Japan", "Category:ダムカード"]
-SEARCHES = ["ダムカード", "dam card japan", "damcard"]
+SEARCHES = ["ダムカード", "dam card japan", "damcard", "dam card", "ダム カード", "intitle:card dam japan"]
 
 def files():
     seen, out = set(), []
@@ -22,8 +22,15 @@ def files():
         d = api("commons.wikimedia.org", {"action": "query", "list": "search", "srsearch": q, "srnamespace": 6, "srlimit": 100})
         for h in d.get("query", {}).get("search", []):
             t = h["title"]
-            if t not in seen and re.search(r"(dam.?card|ダムカード)", t, re.I):
+            if t not in seen and re.search(r"(card|カード)", t, re.I):
                 seen.add(t); out.append(t)
+    for art in ["ダムカード"]:
+        d = api("ja.wikipedia.org", {"action": "query", "titles": art, "prop": "images", "imlimit": 50, "redirects": 1})
+        for pg in d.get("query", {}).get("pages", {}).values():
+            for im in pg.get("images", []):
+                t = im["title"].replace("ファイル:", "File:")
+                if t not in seen:
+                    seen.add(t); out.append(t)
     return [f for f in out if re.search(r"\.(jpe?g|png)$", f, re.I)]
 
 def main():

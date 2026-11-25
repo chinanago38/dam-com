@@ -84,6 +84,7 @@ def region_seeds(names):
 
 def card_images(page_url, s):
     out = []
+    card_page = "ダムカード" in title_of(s) or bool(re.search(r"<h[12][^>]*>[^<]*ダムカード", s))
     for m in re.finditer(r"<img\b[^>]*>", s, re.I):
         tag = m.group(0)
         src = re.search(r'src="([^"]+)"', tag) or re.search(r"src='([^']+)'", tag)
@@ -94,7 +95,7 @@ def card_images(page_url, s):
         u = urllib.parse.urljoin(page_url, html.unescape(src.group(1)))
         if not ok_host(u) or not re.search(r"\.(jpe?g|png|gif)$", u, re.I):
             continue
-        if re.search(r"card|カード", u + " " + alt, re.I) and not re.search(r"bnr|banner|icon|btn|logo", u, re.I):
+        if (card_page or re.search(r"card|カード", u + " " + alt, re.I)) and not re.search(r"bnr|banner|icon|btn|logo|title|head|map|menu|nav", u, re.I):
             out.append((u, alt))
     return out
 
@@ -103,9 +104,10 @@ def follow_links(page_url, s):
     for m in re.finditer(r'<a\b[^>]*href="([^"#]+)"[^>]*>(.*?)</a>', s, re.I | re.S):
         text = re.sub(r"<[^>]+>", "", m.group(2))
         u = urllib.parse.urljoin(page_url, html.unescape(m.group(1)))
-        if ok_host(u) and ("ダムカード" in text or re.search(r"dam.?card", u, re.I)) and not u.lower().endswith((".pdf", ".xlsx", ".xls")):
+        if ok_host(u) and ("カード" in text or re.search(r"card", u, re.I) or re.search(r"見学|施設案内|ダムの紹介|ダムの情報|お知らせ", text)) and not u.lower().endswith((".pdf", ".xlsx", ".xls", ".zip")):
             out.append(u)
-    return out[:3]
+    out.sort(key=lambda x: 0 if "カード" in x or "card" in x.lower() else 1)
+    return out[:8]
 
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
@@ -120,11 +122,14 @@ def main():
     tsv = os.path.join(ROOT, "tools", "photos", "cards_official.tsv")
     rows = open(tsv, encoding="utf-8").read().splitlines() if os.path.exists(tsv) else ["slug\timage\tsource_page\tsource_title\talt"]
     have = {r.split("\t")[1] for r in rows[1:] if "\t" in r}
+    ap = os.path.join(ROOT, "tools", "photos", "cards_approved.tsv")
+    done = {l.split("\t")[0] for l in open(ap, encoding="utf-8").read().splitlines()[1:]} if os.path.exists(ap) else set()
+    targets = [t for t in targets if t[0] not in done]
     for slug, path in targets:
         seen_pages, seen_img, saved = set(), set(), 0
         queue = pages_for(slug, path, seeds.get(slug, []))
         print(slug, names.get(slug, ""), len(queue), "pages", "seed:" + ",".join(seeds.get(slug, [])))
-        while queue and saved < 4 and len(seen_pages) < 20:
+        while queue and saved < 4 and len(seen_pages) < 30:
             u = queue.pop(0)
             if u in seen_pages:
                 continue

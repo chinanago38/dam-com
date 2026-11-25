@@ -4,3 +4,4 @@ yamba
 ogouchi
 okutadami
 sakuma
+tokuyama

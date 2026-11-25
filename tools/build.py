@@ -154,7 +154,7 @@ TYPE_FEATURED = {
   <p>北アルプスから流れる高瀬川には、上位50に入るロックフィルダムが2つ並んでいます。上流の高瀬ダム（176m）はロックフィルで日本一の高さ、下流の七倉ダム（125m）も大きなロックフィルダムです。</p>
   <h3>徳山ダム（岐阜県・161m）</h3>
   <p>岐阜県揖斐川町の揖斐川にあるダムで、ダム湖は徳山湖です。高さは日本で3番目、ためられる水の量（総貯水容量）は日本一のダムとして知られています。</p>
-  <h3>胆沢ダム（岩手県・132m）</h3>
+  <h3>胆沢ダム（岩手県・127m）</h3>
   <p>岩手県奥州市の胆沢川にあるダムで、ダム湖は奥州湖です。堤頂長は723mで、日本の高いダム上位50の中でいちばん長いダムです。ロックフィルが幅の広い谷にも造れることがよくわかるダムです。</p>
   <h3>奈良俣ダム（群馬県・158m）</h3>
   <p>群馬県みなかみ町の楢俣川にあるダムで、ダム湖はならまた湖です。上位50の中で、高瀬ダム、徳山ダムに次ぐ高さのロックフィルです。</p>
@@ -236,6 +236,10 @@ def main():
             r["url"] = "/kurobe/" if r["slug"] == "kurobe" else f"/dam/{r['slug']}/"
             r["has_page"] = r["slug"] == "kurobe" or r["slug"] in DETAILED
             rows.append(r)
+    # 堤高順に順位を振り直す（同じ高さは元の並び順）
+    rows.sort(key=lambda x: (-float(x["height"].rstrip("m")), x["rank"]))
+    for i, x in enumerate(rows, 1):
+        x["rank"] = i
     by_pref = defaultdict(list)
     by_river = defaultdict(list)
     by_type = defaultdict(list)

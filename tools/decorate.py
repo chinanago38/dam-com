@@ -106,8 +106,15 @@ def add_photo(s, slug, photos):
     i = s.find('<div class="page-hero">')
     if i < 0:
         return s
-    j = s.find("</div></div>", i)
-    j = s.find("\n", j) + 1 if j > 0 else -1
+    depth, j = 0, -1
+    for mm in re.finditer(r"<div\b|</div>", s[i:]):
+        depth += 1 if mm.group(0) == "<div" else -1
+        if depth == 0:
+            j = i + mm.end(); break
+    if j > 0 and s[j:j+1] == "\n":
+        j += 1
+    elif j > 0:
+        s = s[:j] + "\n" + s[j:]; j += 1
     return s[:j] + fig + s[j:] if j > 0 else s
 
 
@@ -115,7 +122,7 @@ def process(path, dams, photos=None):
     s = open(path, encoding="utf-8").read()
     s = re.sub(r"/assets/style\.css\?v=[0-9a-z]+", f"/assets/style.css?v={CSS_VER}", s)
     rel0 = os.path.relpath(path, ROOT).replace(os.sep, "/")
-    slug0 = "kurobe" if rel0 == "kurobe/index.html" else (rel0.split("/")[1] if rel0.startswith("dam/") else None)
+    slug0 = "kurobe" if rel0 == "kurobe/index.html" else "File:Damcard.jpg" if rel0 == "dam-card/index.html" else (rel0.split("/")[1] if rel0.startswith("dam/") else None)
     if rel0 == "index.html":
         n_dam = len(glob.glob(os.path.join(ROOT, "dam", "*", "index.html"))) + 1
         s = re.sub(r'<(div|a) class="stat"( href="[^"]*")?><b>[0-9]+</b><small>ダムの見学ガイド</small>', f'<a class="stat" href="/ranking/"><b>{n_dam}</b><small>ダムの見学ガイド</small>', s)

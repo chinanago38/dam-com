@@ -10,7 +10,7 @@ from collections import defaultdict
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATE = "2026-11-25"
 DATE_JA = "2026年11月25日"
-CSS = "/assets/style.css?v=20261125b"
+CSS = "/assets/style.css?v=20261125c"
 
 TYPE_SLUG = {"アーチ式コンクリートダム": "arch", "重力式コンクリートダム": "gravity", "ロックフィルダム": "rockfill"}
 TYPE_DESC = {
@@ -534,6 +534,8 @@ def main():
     with open(os.path.join(ROOT, "sitemap.xml"), "w", encoding="utf-8") as f:
         f.write(sm)
     print("generated", count, "pages; sitemap urls", len(urls))
+    import subprocess
+    subprocess.run(["python3", os.path.join(ROOT, "tools", "decorate.py")], check=True)
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,174 @@
+#!/usr/bin/env python3
+"""全ページの見た目を整える後処理（何度実行しても同じ結果になる）。
+- 見出し(h2)ごとのまとまりをブロック（カード）表示にする
+- ページ上部のタイトル部分を帯（page-hero）にし、ダムのページには高さ・形式・所在地のチップを付ける
+- 表を横スクロールできる枠で包む
+- ダムのページに「高さくらべ」の図、ランキングページに上位15の棒グラフを入れる
+tools/build.py の最後に自動で実行される。
+"""
+import glob, html, os, re
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CSS_VER = "20261125c"
+MARK = "<!--decorated-->"
+
+
+def strip(s):
+    return re.sub(r"<[^>]+>", "", s).strip()
+
+
+def height_of(main):
+    m = re.search(r"<th>堤高</th>\s*<td>(.*?)</td>", main, re.S)
+    if not m:
+        return None, None
+    txt = strip(m.group(1))
+    n = re.search(r"([0-9]{2,3}(?:\.[0-9])?)\s*m", txt)
+    return (float(n.group(1)) if n else None), txt
+
+
+def cell(main, label):
+    m = re.search(r"<th>" + label + r"</th>\s*<td>(.*?)</td>", main, re.S)
+    return strip(m.group(1)) if m else None
+
+
+def bars(items, caption):
+    mx = max(v for _, v, _ in items)
+    rows = []
+    for name, v, me in items:
+        w = max(8, round(v / mx * 100))
+        rows.append(f'<div class="bar{" me" if me else ""}"><span class="name">{html.escape(name)}</span>'
+                    f'<span class="track"><span class="fill" style="width:{w}%">{v:g}m</span></span></div>')
+    return f'<figure class="figure"><div class="bars">{"".join(rows)}</div><figcaption>{html.escape(caption)}</figcaption></figure>'
+
+
+def wrap_tables(s):
+    return re.sub(r"(?<!<div class=\"table-wrap\">)(<table\b.*?</table>)", r'<div class="table-wrap">\1</div>', s, flags=re.S)
+
+
+def blockify(body):
+    """body = main の中身（crumb と hero を除いた部分）を h2 ごとのブロックに分ける"""
+    tail = ""
+    k = body.find('<section class="sources">')
+    if k >= 0:
+        tail = body[k:].replace('<section class="sources">', '<section class="sources block">', 1)
+        body = body[:k]
+    parts = re.split(r"(?=<h2[ >])", body)
+    out = []
+    for p in parts:
+        if not p.strip():
+            continue
+        if p.lstrip().startswith("<h2"):
+            out.append(f'<section class="block">{p.rstrip()}</section>\n')
+        elif strip(p):
+            out.append(f'<div class="block lead-block">{p.strip()}</div>\n')
+    return "".join(out) + tail
+
+
+def process(path, dams):
+    s = open(path, encoding="utf-8").read()
+    s = re.sub(r"/assets/style\.css\?v=[0-9a-z]+", f"/assets/style.css?v={CSS_VER}", s)
+    if MARK in s:
+        open(path, "w", encoding="utf-8").write(s)
+        return False
+    m = re.search(r"(<main><div class=\"wrap\">)(.*)(</div></main>)", s, re.S)
+    if not m:
+        return False
+    main = m.group(2)
+    rel = os.path.relpath(path, ROOT).replace(os.sep, "/")
+    is_top = rel == "index.html"
+
+    crumb = ""
+    cm = re.search(r"\s*<div class=\"crumb\">.*?</div>", main, re.S)
+    if cm:
+        crumb, main = cm.group(0), main.replace(cm.group(0), "", 1)
+
+    hero = ""
+    if not is_top:
+        hm = re.search(r"\s*<h1>(.*?)</h1>\s*(<p class=\"updated\">.*?</p>)?", main, re.S)
+        if hm:
+            main = main.replace(hm.group(0), "", 1)
+            chips = ""
+            if rel.startswith("dam/") or rel == "kurobe/index.html":
+                h, htxt = height_of(main)
+                kinds = []
+                if htxt:
+                    kinds.append(f"高さ <b>{html.escape(htxt.split('（')[0])}</b>")
+                t = cell(main, "形式")
+                if t:
+                    kinds.append(html.escape(t.split("（")[0]))
+                loc = cell(main, "所在地")
+                if loc:
+                    kinds.append(html.escape(loc.split("（")[0]))
+                lake = cell(main, "ダム湖")
+                if lake and lake != "—":
+                    kinds.append("ダム湖：" + html.escape(lake.split("（")[0]))
+                chips = '<div class="chips">' + "".join(f'<span class="chip">{k}</span>' for k in kinds) + "</div>" if kinds else ""
+            hero = f'\n  <div class="page-hero"><h1>{hm.group(1)}</h1>{hm.group(2) or ""}{chips}</div>\n'
+
+    # 図：ダムのページの高さくらべ
+    if rel.startswith("dam/") or rel == "kurobe/index.html":
+        h, _ = height_of(main)
+        name = strip(re.search(r"<h1>(.*?)</h1>", s, re.S).group(1)) if re.search(r"<h1>(.*?)</h1>", s, re.S) else ""
+        name = re.sub(r"(の見学ガイド|の観光放流.*|・.*|の見学.*|｜.*)$", "", name)
+        if h:
+            items = []
+            if "黒部" not in name:
+                items.append(("黒部ダム（日本一）", 186.0, False))
+            items.append((name or "このダム", h, True))
+            items.append(("高さ50位のダム", 114.0, False))
+            items.append(("ダムの基準（15m）", 15.0, False))
+            items.sort(key=lambda x: -x[1])
+            fig = bars(items, f"{name}の高さを、日本一の黒部ダム、高さ50位のダム（114m）、法律上ダムと呼ばれる最低の高さ（15m）と比べた図です。")
+            fig_block = f'<section class="block"><h2>高さくらべ</h2>{fig}</section>\n'
+            # 基本情報ブロックの直後に置く
+            idx = main.find("<h2>基本情報</h2>")
+            nxt = main.find("<h2", idx + 5) if idx >= 0 else -1
+            if nxt > 0:
+                main = main[:nxt] + "\n  <h2>高さくらべ</h2>" + fig + "\n" + main[nxt:]
+            else:
+                main = main + fig_block
+
+    # 図：ランキング上位15
+    if rel == "ranking/index.html" and dams:
+        top = dams[:15]
+        fig = bars([(d[0], d[1], False) for d in top], "日本のダムの高さ（堤高）上位15。数字は基礎の岩盤からダムのいちばん上までの高さです。")
+        idx = main.find("<table")
+        main = main[:idx] + "<h2>上位15をグラフで見る</h2>" + fig + "\n  <h2>上位50の一覧</h2>\n" + main[idx:]
+
+    main = wrap_tables(main)
+    main = blockify(main)
+
+    if is_top:
+        n_dam = len(glob.glob(os.path.join(ROOT, "dam", "*", "index.html"))) + 1
+        s = re.sub(r'(<section class="hero"><div class="wrap">.*?)(</div></section>)',
+                   lambda mm: mm.group(1) + f'\n  <div class="stats"><div class="stat"><b>{n_dam}</b><small>ダムの見学ガイド</small></div>'
+                   '<div class="stat"><b>186m</b><small>日本一高い黒部ダム</small></div>'
+                   '<div class="stat"><b>約2,700</b><small>日本のダムの数</small></div>'
+                   '<div class="stat"><b>800か所以上</b><small>ダムカードの配布</small></div></div>\n' + mm.group(2),
+                   s, count=1, flags=re.S)
+        m = re.search(r"(<main><div class=\"wrap\">)(.*)(</div></main>)", s, re.S)
+
+    s = s[:m.start(2)] + crumb + hero + main + s[m.end(2):]
+    s = s.replace("</head>", MARK + "\n</head>", 1)
+    open(path, "w", encoding="utf-8").write(s)
+    return True
+
+
+def main():
+    dams = []
+    tsv = os.path.join(ROOT, "tools", "dams.tsv")
+    if os.path.exists(tsv):
+        for line in open(tsv, encoding="utf-8").read().splitlines()[1:]:
+            c = line.split("\t")
+            dams.append((c[2], float(c[4].rstrip("m"))))
+        dams.sort(key=lambda x: -x[1])
+    n = 0
+    for f in glob.glob(os.path.join(ROOT, "**", "index.html"), recursive=True):
+        if "/.git/" in f or "/tools/" in f:
+            continue
+        n += process(f, dams)
+    print("decorated", n)
+
+
+if __name__ == "__main__":
+    main()

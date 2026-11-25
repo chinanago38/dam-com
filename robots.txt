@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://xn--6ck4c.com/sitemap.xml

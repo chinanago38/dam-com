@@ -179,6 +179,8 @@ def page(title, desc, canonical, body, crumbs):
 <meta name="description" content="{esc(desc)}">
 <link rel="canonical" href="https://xn--6ck4c.com{canonical}">
 <link rel="stylesheet" href="{CSS}">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1061443138303693"
+     crossorigin="anonymous"></script>
 </head>
 <body>
 <header class="site"><div class="wrap">

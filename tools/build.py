@@ -299,6 +299,14 @@ def main():
         write(r["url"], page(title, desc, r["url"], body, [("ダム.com", "/"), ("堤高ランキング", "/ranking/"), (name, None)]))
         count += 1
 
+    # 手書き本文（tools/bodies/<slug>.html の1行目が title、2行目が description、3行目以降が本文）
+    for r in rows:
+        bp = os.path.join(ROOT, "tools", "bodies", r["slug"] + ".html")
+        if r["slug"] in DETAILED and os.path.exists(bp):
+            lines = open(bp, encoding="utf-8").read().split("\n", 2)
+            write(r["url"], page(lines[0], lines[1], r["url"], lines[2], [("ダム.com", "/"), ("堤高ランキング", "/ranking/"), (r["name"], None)]))
+            count += 1
+
     # ランキング
     trs = "".join(f'<tr><td>{r["rank"]}</td><td>{dam_link(r)}</td><td>{esc(r["height"])}</td><td><a href="/keishiki/{r["tslug"]}/">{esc(TYPE_NAME[r["tslug"]].replace("コンクリートダム","").replace("ダム",""))}</a></td><td>{esc(r["location"])}</td></tr>' for r in rows)
     def h(x): return float(x["height"].rstrip("m"))

@@ -325,6 +325,18 @@ def main():
         site_pages.append(f"/{slug}/")
         count += 1
 
+    # 地方別ページ（tools/regions/<slug>.html：1行目 title、2行目 description、3行目以降 本文）
+    rdir = os.path.join(ROOT, "tools", "regions")
+    region_pages = []
+    for f in sorted(os.listdir(rdir)) if os.path.isdir(rdir) else []:
+        slug = f[:-5]
+        lines = open(os.path.join(rdir, f), encoding="utf-8").read().split("\n", 2)
+        crumb = re.sub(r"｜.*$", "", lines[0])
+        write(f"/region/{slug}/", page(lines[0], lines[1], f"/region/{slug}/", lines[2], [("ダム.com", "/"), (crumb, None)]))
+        region_pages.append(f"/region/{slug}/")
+        count += 1
+    site_pages += region_pages
+
     # ランキング
     trs = "".join(f'<tr><td>{r["rank"]}</td><td>{dam_link(r)}</td><td>{esc(r["height"])}</td><td><a href="/keishiki/{r["tslug"]}/">{esc(TYPE_NAME[r["tslug"]].replace("コンクリートダム","").replace("ダム",""))}</a></td><td>{esc(r["location"])}</td></tr>' for r in rows)
     def h(x): return float(x["height"].rstrip("m"))

@@ -194,6 +194,7 @@ def page(title, desc, canonical, body, crumbs):
 <footer class="site"><div class="wrap">
   <p>ダム.com は、ダムを巡る人のための個人運営の情報サイトです。国や電力会社など、ダムを管理する団体の公式サイトではありません。</p>
   <p><a href="/">トップ</a> ・ <a href="/ranking/">堤高ランキング</a> ・ <a href="/houryu/">観光放流カレンダー</a> ・ <a href="/keishiki/">ダムの形式</a> ・ <a href="/dam-card/">ダムカード</a></p>
+  <p><a href="/operator/">運営者情報</a> ・ <a href="/editorial-policy/">編集方針</a> ・ <a href="/contact/">お問い合わせ</a> ・ <a href="/privacy/">プライバシーポリシー</a> ・ <a href="/disclaimer/">免責事項</a></p>
   <p>© 2026 ダム.com</p>
 </div></footer>
 </body>
@@ -310,6 +311,17 @@ def main():
             lines = open(bp, encoding="utf-8").read().split("\n", 2)
             write(r["url"], page(lines[0], lines[1], r["url"], lines[2], [("ダム.com", "/"), ("堤高ランキング", "/ranking/"), (r["name"], None)]))
             count += 1
+
+    # サイト情報ページ（tools/pages/<slug>.html：1行目 title、2行目 description、3行目以降 本文）
+    pdir = os.path.join(ROOT, "tools", "pages")
+    site_pages = []
+    for f in sorted(os.listdir(pdir)) if os.path.isdir(pdir) else []:
+        slug = f[:-5]
+        lines = open(os.path.join(pdir, f), encoding="utf-8").read().split("\n", 2)
+        crumb = re.sub(r"｜.*$", "", lines[0])
+        write(f"/{slug}/", page(lines[0], lines[1], f"/{slug}/", lines[2], [("ダム.com", "/"), (crumb, None)]))
+        site_pages.append(f"/{slug}/")
+        count += 1
 
     # ランキング
     trs = "".join(f'<tr><td>{r["rank"]}</td><td>{dam_link(r)}</td><td>{esc(r["height"])}</td><td><a href="/keishiki/{r["tslug"]}/">{esc(TYPE_NAME[r["tslug"]].replace("コンクリートダム","").replace("ダム",""))}</a></td><td>{esc(r["location"])}</td></tr>' for r in rows)
@@ -499,7 +511,7 @@ def main():
     count += 1
 
     # sitemap
-    urls = ["/", "/dam-card/", "/kurobe/", "/ranking/", "/keishiki/", "/houryu/"] + [f"/keishiki/{t}/" for t in ["arch","gravity","rockfill"]] + [r["url"] for r in rows if r["has_page"] and r["slug"] != "kurobe"]
+    urls = ["/", "/dam-card/", "/kurobe/", "/ranking/", "/keishiki/", "/houryu/"] + site_pages + [f"/keishiki/{t}/" for t in ["arch","gravity","rockfill"]] + [r["url"] for r in rows if r["has_page"] and r["slug"] != "kurobe"]
     known = {r["slug"] for r in rows}
     for extra in sorted(os.listdir(os.path.join(ROOT, "dam"))):  # 上位50以外の手書きページ
         if extra not in known and os.path.exists(os.path.join(ROOT, "dam", extra, "index.html")):

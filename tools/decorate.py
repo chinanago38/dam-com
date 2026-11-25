@@ -9,7 +9,7 @@ tools/build.py の最後に自動で実行される。
 import glob, html, os, re
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CSS_VER = "20261125c"
+CSS_VER = "20261125d"
 MARK = "<!--decorated-->"
 
 
@@ -118,7 +118,7 @@ def process(path, dams, photos=None):
     slug0 = "kurobe" if rel0 == "kurobe/index.html" else (rel0.split("/")[1] if rel0.startswith("dam/") else None)
     if rel0 == "index.html":
         n_dam = len(glob.glob(os.path.join(ROOT, "dam", "*", "index.html"))) + 1
-        s = re.sub(r'<div class="stat"><b>[0-9]+</b><small>ダムの見学ガイド</small>', f'<div class="stat"><b>{n_dam}</b><small>ダムの見学ガイド</small>', s)
+        s = re.sub(r'<(div|a) class="stat"( href="[^"]*")?><b>[0-9]+</b><small>ダムの見学ガイド</small>', f'<a class="stat" href="/ranking/"><b>{n_dam}</b><small>ダムの見学ガイド</small>', s)
         if photos and "naruko" in photos:
             s = re.sub(r"<!--photo--><figure class=\"photo\">.*?</figure>\n", "", s, flags=re.S)
             _, url, page, author, lic, lic_url, alt = photos["naruko"][:7]
@@ -203,10 +203,10 @@ def process(path, dams, photos=None):
     if is_top:
         n_dam = len(glob.glob(os.path.join(ROOT, "dam", "*", "index.html"))) + 1
         s = re.sub(r'(<section class="hero"><div class="wrap">.*?)(</div></section>)',
-                   lambda mm: mm.group(1) + f'\n  <div class="stats"><div class="stat"><b>{n_dam}</b><small>ダムの見学ガイド</small></div>'
-                   '<div class="stat"><b>186m</b><small>日本一高い黒部ダム</small></div>'
-                   '<div class="stat"><b>約2,700</b><small>日本のダムの数</small></div>'
-                   '<div class="stat"><b>800か所以上</b><small>ダムカードの配布</small></div></div>\n' + mm.group(2),
+                   lambda mm: mm.group(1) + f'\n  <div class="stats"><a class="stat" href="/ranking/"><b>{n_dam}</b><small>ダムの見学ガイド</small></a>'
+                   '<a class="stat" href="/kurobe/"><b>186m</b><small>日本一高い黒部ダム</small></a>'
+                   '<a class="stat" href="/keishiki/"><b>約2,700</b><small>日本のダムの数</small></a>'
+                   '<a class="stat" href="/dam-card/"><b>800か所以上</b><small>ダムカードの配布</small></a></div>\n' + mm.group(2),
                    s, count=1, flags=re.S)
         m = re.search(r"(<main><div class=\"wrap\">)(.*)(</div></main>)", s, re.S)
 

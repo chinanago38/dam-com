@@ -28,6 +28,9 @@ nav.global a:hover{background:rgba(255,255,255,.28);color:#fff}
 .hero p{color:#e3f3fb;margin:0;max-width:640px}
 .hero .stats{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px}
 .hero .stat{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);border-radius:12px;padding:10px 16px;min-width:120px}
+.hero a.stat{color:#fff;text-decoration:none;transition:background .2s,transform .15s}
+.hero a.stat:hover{background:rgba(255,255,255,.26);transform:translateY(-2px)}
+.hero a.stat small::after{content:" ›"}
 .hero .stat b{display:block;font-size:1.5rem;line-height:1.2}
 .hero .stat small{color:#d4ecf7}
 

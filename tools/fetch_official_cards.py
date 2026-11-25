@@ -44,7 +44,7 @@ def title_of(s):
     m = re.search(r"<title[^>]*>(.*?)</title>", s, re.S | re.I)
     return re.sub(r"\s+", " ", html.unescape(m.group(1))).strip()[:80] if m else ""
 
-def pages_for(slug, path):
+def pages_for(slug, path, seeds=()):
     s = open(path, encoding="utf-8").read()
     urls = [u for u in re.findall(r'href="(https://[^"#]+)"', s) if ok_host(u) and not u.lower().endswith((".pdf", ".xlsx", ".xls", ".zip"))]
     tops = set()
@@ -55,7 +55,32 @@ def pages_for(slug, path):
             tops.add(f"https://{p.hostname}/{seg[0]}/")
     # 全国共通のページ（www.mlit.go.jp/river/... のカード一覧など）は、そのダムの画像とは限らないので除く
     urls = [u for u in urls if urllib.parse.urlparse(u).hostname != "www.mlit.go.jp"]
-    return list(dict.fromkeys(urls + sorted(tops) + EXTRA.get(slug, [])))[:12]
+    return list(dict.fromkeys(list(seeds) + urls + sorted(tops) + EXTRA.get(slug, [])))[:14]
+
+REGION_PAGES = [f"https://www.mlit.go.jp/river/kankyo/campaign/shunnkan/damcard{n}.html" for n in range(81, 91)]
+
+def region_seeds(names):
+    """国土交通省のダムカード案内（地方別）から、ダム名ごとの「ホームページURL」を拾う。"""
+    seeds = {}
+    for rp in REGION_PAGES:
+        s = get(rp)
+        time.sleep(0.5)
+        if not s:
+            continue
+        for slug, name in names.items():
+            for m in re.finditer(re.escape(name), s):
+                chunk = s[m.end():m.end() + 5000]
+                nxt = re.search(r"ダムカード配布場所", chunk)
+                for u in re.findall(r'href="(https?://[^"#]+)"', chunk):
+                    u = u.replace("http://", "https://", 1)
+                    if ok_host(u) and "/river/kankyo/" not in u and not u.lower().endswith((".pdf", ".xlsx")):
+                        seeds.setdefault(slug, [])
+                        if u not in seeds[slug]:
+                            seeds[slug].append(u)
+                        break
+                if nxt is None:
+                    continue
+    return seeds
 
 def card_images(page_url, s):
     out = []
@@ -86,12 +111,20 @@ def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     targets = [(os.path.basename(os.path.dirname(p)), p) for p in sorted(glob.glob(os.path.join(ROOT, "dam", "*", "index.html")))]
     targets += [("kurobe", os.path.join(ROOT, "kurobe", "index.html")), ("dam-card", os.path.join(ROOT, "dam-card", "index.html"))]
-    rows = ["slug\timage\tsource_page\tsource_title\talt"]
+    names = {}
+    for slug, path in targets:
+        m = re.search(r"<h1>(.+?ダム)", open(path, encoding="utf-8").read())
+        if m and slug != "dam-card":
+            names[slug] = m.group(1)
+    seeds = region_seeds(names)
+    tsv = os.path.join(ROOT, "tools", "photos", "cards_official.tsv")
+    rows = open(tsv, encoding="utf-8").read().splitlines() if os.path.exists(tsv) else ["slug\timage\tsource_page\tsource_title\talt"]
+    have = {r.split("\t")[1] for r in rows[1:] if "\t" in r}
     for slug, path in targets:
         seen_pages, seen_img, saved = set(), set(), 0
-        queue = pages_for(slug, path)
-        print(slug, len(queue), "pages")
-        while queue and saved < 2 and len(seen_pages) < 15:
+        queue = pages_for(slug, path, seeds.get(slug, []))
+        print(slug, names.get(slug, ""), len(queue), "pages", "seed:" + ",".join(seeds.get(slug, [])))
+        while queue and saved < 4 and len(seen_pages) < 20:
             u = queue.pop(0)
             if u in seen_pages:
                 continue
@@ -105,9 +138,13 @@ def main():
                 continue
             queue += [x for x in follow_links(u, s) if x not in seen_pages]
             for img, alt in card_images(u, s):
-                if img in seen_img or saved >= 2:
+                if img in seen_img or saved >= 4:
                     continue
                 seen_img.add(img)
+                name = f"{slug}-{hashlib.md5(img.encode()).hexdigest()[:8]}.jpg"
+                if "/assets/cards/" + name in have:
+                    saved += 1
+                    continue
                 data = get(img, binary=True)
                 time.sleep(0.3)
                 if not data or len(data) < 4000:
@@ -122,11 +159,11 @@ def main():
                     continue
                 im.thumbnail((640, 640))
                 saved += 1
-                name = f"{slug}-{saved}.jpg"
                 im.save(os.path.join(OUT_DIR, name), "JPEG", quality=85)
+                have.add("/assets/cards/" + name)
                 rows.append("\t".join([slug, "/assets/cards/" + name, u, title_of(s).replace("\t", " "), alt.replace("\t", " ")]))
-                print("  ok", img)
-    open(os.path.join(ROOT, "tools", "photos", "cards_official.tsv"), "w", encoding="utf-8").write("\n".join(rows) + "\n")
+                print("  ok", img, alt)
+    open(tsv, "w", encoding="utf-8").write("\n".join(rows) + "\n")
 
 if __name__ == "__main__":
     main()

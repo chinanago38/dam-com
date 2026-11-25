@@ -430,6 +430,17 @@ def main():
   <p>日本の高いダム上位50に入っている{TYPE_NAME[ts]}は{len(lst)}基です。この{len(lst)}基の高さの平均は約{sum(hs)/len(hs):.0f}m、堤頂長（ダムのいちばん上の長さ）の平均は約{sum(ls)/len(ls):.0f}mです。</p>
   <p>いちばん長いのは{esc(lmax["name"])}の{esc(lmax["length"])}、いちばん短いのは{esc(lmin["name"])}の{esc(lmin["length"])}です。堤頂長を高さで割ると、平均で約{ratio:.1f}倍になります。この数字が大きいほど、高さに比べて横に長いダムということです。{"アーチ式は狭い谷に造るので、高さのわりに短いダムが多いのが特徴です。" if ts=="arch" else ("重力式は、アーチ式より横に長く、ロックフィルより短い、中間の形のダムが多くなっています。" if ts=="gravity" else "ロックフィルは幅の広い谷にも造れるので、高さのわりに長いダムが多いのが特徴です。")}</p>
 """
+        from collections import Counter
+        pc = Counter()
+        for x in lst:
+            for pref in dict.fromkeys(re.findall(r"(北海道|東京都|大阪府|京都府|\S{2,3}県)", x["location"])):
+                pc[pref] += 1
+        prefs = "、".join(f"{k}（{v}基）" for k, v in sorted(pc.items(), key=lambda kv: (-kv[1], kv[0])))
+        top = sorted(lst, key=lambda x: -float(x["height"].rstrip("m")))[:3]
+        stats += f"""  <h2>都道府県別に見る{TYPE_NAME[ts]}</h2>
+  <p>上位50に入っている{TYPE_NAME[ts]}を、所在地の都道府県ごとに数えると、{prefs}です（2つの県にまたがるダムは、両方の県に数えています）。</p>
+  <p>この中で高さの上位3つは、{"、".join(f"{dam_link(x)}（{esc(x['height'])}）" for x in top)}です。出かける前には、各ダムのページで見学できる時期や行き方を確かめてください。</p>
+"""
         body = f"""  <h1>{TYPE_NAME[ts]}とは｜特徴と代表的なダム</h1>
   <p class="updated">最終確認日：{DATE_JA}</p>
   <p>{TYPE_DESC[ts]}</p>

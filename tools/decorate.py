@@ -85,11 +85,18 @@ def load_photos():
                     a = "作者不明"
                 c[3] = a
                 photos[c[0].strip()] = c
+    ov = os.path.join(d, "alt_overrides.tsv")
+    if os.path.exists(ov):
+        for line in open(ov, encoding="utf-8").read().splitlines()[1:]:
+            k, _, alt = line.partition("\t")
+            if k in photos and alt:
+                photos[k][6] = alt
     return photos
 
 
 def add_photo(s, slug, photos):
-    if "<!--photo-->" in s or slug not in photos:
+    s = re.sub(r"<!--photo--><figure class=\"photo\">.*?</figure>\n", "", s, flags=re.S)
+    if slug not in photos:
         return s
     _, url, page, author, lic, lic_url, alt = photos[slug][:7]
     e = html.escape
@@ -109,6 +116,17 @@ def process(path, dams, photos=None):
     s = re.sub(r"/assets/style\.css\?v=[0-9a-z]+", f"/assets/style.css?v={CSS_VER}", s)
     rel0 = os.path.relpath(path, ROOT).replace(os.sep, "/")
     slug0 = "kurobe" if rel0 == "kurobe/index.html" else (rel0.split("/")[1] if rel0.startswith("dam/") else None)
+    if rel0 == "index.html":
+        n_dam = len(glob.glob(os.path.join(ROOT, "dam", "*", "index.html"))) + 1
+        s = re.sub(r'<div class="stat"><b>[0-9]+</b><small>ダムの見学ガイド</small>', f'<div class="stat"><b>{n_dam}</b><small>ダムの見学ガイド</small>', s)
+        if photos and "naruko" in photos:
+            s = re.sub(r"<!--photo--><figure class=\"photo\">.*?</figure>\n", "", s, flags=re.S)
+            _, url, page, author, lic, lic_url, alt = photos["naruko"][:7]
+            e = html.escape
+            fig = (f'<!--photo--><figure class="photo"><img src="{e(url)}" alt="{e(alt)}" loading="lazy" decoding="async">'
+                   f'<figcaption>{e(alt)}（宮城県）　写真：{e(author)} / <a href="{e(lic_url)}" rel="noopener license" target="_blank">{e(lic)}</a>'
+                   f'（<a href="{e(page)}" rel="noopener" target="_blank">Wikimedia Commons</a>）</figcaption></figure>\n')
+            s = s.replace('<main><div class="wrap">', '<main><div class="wrap">\n' + fig, 1)
     if MARK in s:
         if slug0 and photos:
             s = add_photo(s, slug0, photos)

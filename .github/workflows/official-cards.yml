@@ -1,0 +1,22 @@
+name: Fetch official dam card images
+# 国土交通省・水資源機構の公式ページからダムカードの画像を集める（PDL1.0、出典表示つきで使う）
+on:
+  push:
+    branches: [main]
+    paths: ["tools/fetch_official_cards.py"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install pillow
+      - run: python3 tools/fetch_official_cards.py
+      - name: Commit results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/cards tools/photos/cards_official.tsv
+          git diff --cached --quiet || (git commit -m "Update official dam card images" && git pull --rebase origin main && git push)

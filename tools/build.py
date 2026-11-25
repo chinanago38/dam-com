@@ -453,6 +453,7 @@ def main():
     <li><strong>地盤がそれほど固くない、または谷の幅が広い</strong>場合は、重さで支える重力式や、岩を積み上げるロックフィルが選ばれます</li>
     <li><strong>近くで大量の岩が取れる</strong>場所では、その岩を材料に使えるロックフィルが有利です。材料を遠くから運ばずに済むからです</li>
   </ul>
+  <p>たとえば、北アルプスの深い峡谷にある黒部ダムはアーチ式、首都圏の丘陵地に近い宮ヶ瀬ダムは重力式、岩の材料が豊富な揖斐川の上流にある徳山ダムはロックフィルです。</p>
   <p>同じ川でも、上流と下流で形式の違うダムが並んでいることがあります。その場所ごとに、いちばん安全で無理のない形が選ばれた結果です。</p>
 
   <h2>形式ごとの見学の楽しみ方</h2>
@@ -482,6 +483,10 @@ def main():
 
     # sitemap
     urls = ["/", "/dam-card/", "/kurobe/", "/ranking/", "/keishiki/", "/houryu/"] + [f"/keishiki/{t}/" for t in ["arch","gravity","rockfill"]] + [r["url"] for r in rows if r["has_page"] and r["slug"] != "kurobe"]
+    known = {r["slug"] for r in rows}
+    for extra in sorted(os.listdir(os.path.join(ROOT, "dam"))):  # 上位50以外の手書きページ
+        if extra not in known and os.path.exists(os.path.join(ROOT, "dam", extra, "index.html")):
+            urls.append(f"/dam/{extra}/")
     sm = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + "".join(f"<url><loc>https://xn--6ck4c.com{u}</loc><lastmod>{DATE}</lastmod></url>\n" for u in urls) + "</urlset>\n"
     with open(os.path.join(ROOT, "sitemap.xml"), "w", encoding="utf-8") as f:
         f.write(sm)

@@ -9,7 +9,7 @@ tools/build.py の最後に自動で実行される。
 import glob, html, os, re
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CSS_VER = "20261125d"
+CSS_VER = "20261125e"
 MARK = "<!--decorated-->"
 
 
@@ -94,6 +94,42 @@ def load_photos():
     return photos
 
 
+def load_cards():
+    """tools/photos/cards_approved.tsv に人の目で確認して載せた画像だけ使う。出典は cards_official.tsv から引く。"""
+    src = {}
+    f = os.path.join(ROOT, "tools", "photos", "cards_official.tsv")
+    if os.path.exists(f):
+        for line in open(f, encoding="utf-8").read().splitlines()[1:]:
+            c = line.split("\t")
+            if len(c) >= 4 and re.match(r"https://[^/]*(mlit|water)\.go\.jp/", c[2]):
+                src[c[1]] = (c[2], c[3])
+    cards = {}
+    f = os.path.join(ROOT, "tools", "photos", "cards_approved.tsv")
+    if os.path.exists(f):
+        for line in open(f, encoding="utf-8").read().splitlines()[1:]:
+            c = line.split("\t")
+            if len(c) >= 3 and c[1] in src and os.path.exists(os.path.join(ROOT, c[1].lstrip("/"))):
+                cards.setdefault(c[0], []).append((c[1], c[2]) + src[c[1]])
+    return cards
+
+
+def add_cards(s, slug, cards):
+    """公式ページのダムカード画像を「ダムカード」の見出しの下に入れる（PDL1.0、出典表示つき）。"""
+    s = re.sub(r"<!--cards--><figure class=\"cardimg\">.*?</figure>\n?", "", s, flags=re.S)
+    if slug not in cards:
+        return s
+    e = html.escape
+    imgs = "".join(f'<img src="{e(img)}?v={CSS_VER}" alt="{e(cap)}" title="{e(cap)}" loading="lazy" decoding="async" width="320">' for img, cap, _, _ in cards[slug])
+    caps = "／".join(cap for _, cap, _, _ in cards[slug])
+    src = "、".join(dict.fromkeys(f'<a href="{e(u)}" rel="noopener" target="_blank">{e(t or u)}</a>' for _, _, u, t in cards[slug]))
+    fig = (f'<!--cards--><figure class="cardimg"><div class="cardimg-row">{imgs}</div>'
+           f'<figcaption>{e(caps)}（画像は縮小して掲載）<br>出典：{src}（国土交通省のページ。公共データ利用規約 PDL1.0 にもとづいて掲載）</figcaption></figure>\n')
+    m = re.search(r'<section class="block"><h2>[^<]*ダムカード[^<]*</h2>\n?', s) or re.search(r'<section class="block"><h2>[^<]*</h2>\n?', s)
+    if not m:
+        return s
+    return s[:m.end()] + fig + s[m.end():]
+
+
 def add_photo(s, slug, photos):
     s = re.sub(r"<!--photo--><figure class=\"photo\">.*?</figure>\n", "", s, flags=re.S)
     if slug not in photos:
@@ -118,6 +154,19 @@ def add_photo(s, slug, photos):
     return s[:j] + fig + s[j:] if j > 0 else s
 
 
+CARDS = None
+
+
+def card_hook(s, rel0):
+    global CARDS
+    if CARDS is None:
+        CARDS = load_cards()
+    cslug = "dam-card" if rel0 == "dam-card/index.html" else "kurobe" if rel0 == "kurobe/index.html" else (rel0.split("/")[1] if rel0.startswith("dam/") else None)
+    if not cslug:
+        return s
+    return add_cards(s, cslug, CARDS)
+
+
 def process(path, dams, photos=None):
     s = open(path, encoding="utf-8").read()
     s = re.sub(r"/assets/style\.css\?v=[0-9a-z]+", f"/assets/style.css?v={CSS_VER}", s)
@@ -137,6 +186,7 @@ def process(path, dams, photos=None):
     if MARK in s:
         if slug0 and photos:
             s = add_photo(s, slug0, photos)
+        s = card_hook(s, rel0)
         open(path, "w", encoding="utf-8").write(s)
         return False
     m = re.search(r"(<main><div class=\"wrap\">)(.*)(</div></main>)", s, re.S)
@@ -221,6 +271,7 @@ def process(path, dams, photos=None):
     s = s.replace("</head>", MARK + "\n</head>", 1)
     if slug0 and photos:
         s = add_photo(s, slug0, photos)
+    s = card_hook(s, rel0)
     open(path, "w", encoding="utf-8").write(s)
     return True
 

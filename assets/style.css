@@ -124,3 +124,8 @@ footer.site p{margin:.5em 0}
   .bar{grid-template-columns:6.5em 1fr}
   nav.global a{font-size:.82rem;padding:5px 10px}
 }
+/* official dam card images */
+.cardimg{margin:4px 0 16px;background:#f5f9fc;border:1px solid #dbe7ef;border-radius:12px;padding:12px}
+.cardimg-row{display:flex;gap:10px;flex-wrap:wrap}
+.cardimg-row img{width:calc(50% - 5px);max-width:320px;height:auto;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.15);background:#fff}
+.cardimg figcaption{font-size:.76rem;color:var(--sub);margin-top:8px;line-height:1.6}

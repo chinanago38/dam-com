@@ -183,7 +183,7 @@ def page(title, desc, canonical, body, crumbs):
 <body>
 <header class="site"><div class="wrap">
   <a class="logo" href="/">ダム<span>.com</span></a>
-  <nav class="global"><a href="/ranking/">ランキング</a><a href="/keishiki/">ダムの形式</a><a href="/dam-card/">ダムカード</a></nav>
+  <nav class="global"><a href="/ranking/">ランキング</a><a href="/houryu/">観光放流</a><a href="/keishiki/">ダムの形式</a><a href="/dam-card/">ダムカード</a></nav>
 </div></header>
 
 <main><div class="wrap">
@@ -193,7 +193,7 @@ def page(title, desc, canonical, body, crumbs):
 
 <footer class="site"><div class="wrap">
   <p>ダム.com は、ダムを巡る人のための個人運営の情報サイトです。国や電力会社など、ダムを管理する団体の公式サイトではありません。</p>
-  <p><a href="/">トップ</a> ・ <a href="/ranking/">堤高ランキング</a> ・ <a href="/keishiki/">ダムの形式</a> ・ <a href="/dam-card/">ダムカード</a></p>
+  <p><a href="/">トップ</a> ・ <a href="/ranking/">堤高ランキング</a> ・ <a href="/houryu/">観光放流カレンダー</a> ・ <a href="/keishiki/">ダムの形式</a> ・ <a href="/dam-card/">ダムカード</a></p>
   <p>© 2026 ダム.com</p>
 </div></footer>
 </body>
@@ -481,7 +481,7 @@ def main():
     count += 1
 
     # sitemap
-    urls = ["/", "/dam-card/", "/kurobe/", "/ranking/", "/keishiki/"] + [f"/keishiki/{t}/" for t in ["arch","gravity","rockfill"]] + [r["url"] for r in rows if r["has_page"] and r["slug"] != "kurobe"]
+    urls = ["/", "/dam-card/", "/kurobe/", "/ranking/", "/keishiki/", "/houryu/"] + [f"/keishiki/{t}/" for t in ["arch","gravity","rockfill"]] + [r["url"] for r in rows if r["has_page"] and r["slug"] != "kurobe"]
     sm = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + "".join(f"<url><loc>https://xn--6ck4c.com{u}</loc><lastmod>{DATE}</lastmod></url>\n" for u in urls) + "</urlset>\n"
     with open(os.path.join(ROOT, "sitemap.xml"), "w", encoding="utf-8") as f:
         f.write(sm)

@@ -100,6 +100,10 @@ dl dd::before{content:"A";position:absolute;left:0;top:2px;width:20px;height:20p
 .bar.me .fill{background:linear-gradient(90deg,#f6c26b,var(--accent))}
 .bar.me .name{color:#a0610c}
 
+.photo{margin:0 0 18px;background:#fff;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);border:1px solid #e6eef3}
+.photo img{display:block;width:100%;height:auto;max-height:460px;object-fit:cover}
+.photo figcaption{font-size:.78rem;color:var(--sub);padding:8px 14px;line-height:1.6}
+
 /* sources */
 .sources{font-size:.9rem}
 .sources h2{font-size:1.05rem}

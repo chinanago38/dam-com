@@ -64,10 +64,42 @@ def blockify(body):
     return "".join(out) + tail
 
 
-def process(path, dams):
+def load_photos():
+    photos = {}
+    d = os.path.join(ROOT, "tools", "photos")
+    if os.path.isdir(d):
+        for f in sorted(glob.glob(os.path.join(d, "*.tsv"))):
+            for line in open(f, encoding="utf-8").read().splitlines()[1:]:
+                c = line.split("\t")
+                if len(c) >= 7 and c[1].startswith("https://upload.wikimedia.org/"):
+                    photos[c[0].strip()] = c
+    return photos
+
+
+def add_photo(s, slug, photos):
+    if "<!--photo-->" in s or slug not in photos:
+        return s
+    _, url, page, author, lic, lic_url, alt = photos[slug][:7]
+    e = html.escape
+    lic_html = f'<a href="{e(lic_url)}" rel="noopener license" target="_blank">{e(lic)}</a>' if lic_url.startswith("http") else e(lic)
+    fig = (f'<!--photo--><figure class="photo"><img src="{e(url)}" alt="{e(alt)}" loading="lazy" decoding="async">'
+           f'<figcaption>{e(alt)}　写真：{e(author)} / {lic_html}（<a href="{e(page)}" rel="noopener" target="_blank">Wikimedia Commons</a>）</figcaption></figure>\n')
+    i = s.find('<div class="page-hero">')
+    if i < 0:
+        return s
+    j = s.find("</div></div>", i)
+    j = s.find("\n", j) + 1 if j > 0 else -1
+    return s[:j] + fig + s[j:] if j > 0 else s
+
+
+def process(path, dams, photos=None):
     s = open(path, encoding="utf-8").read()
     s = re.sub(r"/assets/style\.css\?v=[0-9a-z]+", f"/assets/style.css?v={CSS_VER}", s)
+    rel0 = os.path.relpath(path, ROOT).replace(os.sep, "/")
+    slug0 = "kurobe" if rel0 == "kurobe/index.html" else (rel0.split("/")[1] if rel0.startswith("dam/") else None)
     if MARK in s:
+        if slug0 and photos:
+            s = add_photo(s, slug0, photos)
         open(path, "w", encoding="utf-8").write(s)
         return False
     m = re.search(r"(<main><div class=\"wrap\">)(.*)(</div></main>)", s, re.S)
@@ -150,6 +182,8 @@ def process(path, dams):
 
     s = s[:m.start(2)] + crumb + hero + main + s[m.end(2):]
     s = s.replace("</head>", MARK + "\n</head>", 1)
+    if slug0 and photos:
+        s = add_photo(s, slug0, photos)
     open(path, "w", encoding="utf-8").write(s)
     return True
 
@@ -162,11 +196,12 @@ def main():
             c = line.split("\t")
             dams.append((c[2], float(c[4].rstrip("m"))))
         dams.sort(key=lambda x: -x[1])
+    photos = load_photos()
     n = 0
     for f in glob.glob(os.path.join(ROOT, "**", "index.html"), recursive=True):
         if "/.git/" in f or "/tools/" in f:
             continue
-        n += process(f, dams)
+        n += process(f, dams, photos)
     print("decorated", n)
 
 
